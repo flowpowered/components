@@ -191,6 +191,11 @@ uploadArchives {
 
             developers {
                 developer {
+                    id 'Wulfspider'
+                    name 'Luke Spragg'
+                    email 'the@wulf.im'
+                }
+                developer {
                     id 'Zidane'
                     name 'Chris Sanders'
                     email 'zidane@outlook.com'
