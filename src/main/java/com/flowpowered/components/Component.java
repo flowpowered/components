@@ -1,7 +1,7 @@
 /*
  * This file is part of Flow Components, licensed under the MIT License (MIT).
  *
- * Copyright (c) 2014 Flow Components <http://flowpowered.org/>
+ * Copyright (c) 2014 Spout LLC <https://spout.org/>
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
