@@ -1,0 +1,191 @@
+// Gradle repositories and dependencies
+buildscript {
+    repositories {
+        jcenter()
+    }
+    dependencies {
+        classpath 'nl.javadude.gradle.plugins:license-gradle-plugin:0.11.0'
+    }
+}
+
+// Apply plugin
+apply plugin: 'java'
+apply plugin: 'license'
+apply plugin: 'checkstyle'
+apply plugin: 'maven'
+
+// Default tasks
+defaultTasks 'licenseFormat', 'check', 'build'
+
+// Basic project information
+group = 'org.flowpowered'
+archivesBaseName = 'flow-components'
+version = '1.0.0-SNAPSHOT'
+
+// Extended project information
+ext.projectName = 'Flow Components'
+ext.inceptionYear = '2014'
+ext.packaging = 'jar'
+ext.url = 'http://flowpowered.org'
+ext.description = 'flow-components is a library that provides the framework for a Component System used in a game engine'
+ext.organization = 'Flow Powered'
+
+// Define variables
+ext.buildNumber = project.hasProperty("buildNumber") ? buildNumber : '0'
+ext.ciSystem = project.hasProperty("ciSystem") ? ciSystem : 'unknown'
+ext.commit = project.hasProperty("commit") ? commit : 'unknown'
+
+// Minimum version of Java required
+sourceCompatibility = '1.8'
+targetCompatibility = '1.8'
+
+// Project repositories
+repositories {
+    mavenCentral()
+}
+
+// Project dependencies
+dependencies {
+    compile 'com.google.code.findbugs:jsr305:1.3.9'
+    compile 'junit:junit:4.11'
+    testCompile 'junit:junit:4.11'
+}
+
+// Filter, process, and include resources
+processResources {
+    // Include in final JAR
+    from 'LICENSE.txt'
+}
+
+// License header formatting
+license {
+    ext.name = projectName
+    ext.organization = project.organization
+    ext.url = project.url
+    ext.year = project.inceptionYear
+    header file('HEADER.txt')
+    sourceSets = project.sourceSets
+    ignoreFailures false
+    strictCheck true
+    mapping {
+        java = 'SLASHSTAR_STYLE'
+    }
+}
+
+checkstyle {
+    configProperties = [
+            "name" : projectName,
+            "organization" : project.organization,
+            "url" : project.url,
+            "year" : project.inceptionYear
+    ]
+    configFile = file("checkstyle.xml")
+}
+
+// Source compiler configuration
+configure([compileJava, compileTestJava]) {
+    options.compilerArgs += [ '-Xlint:all', '-Xlint:-path' ]
+    options.deprecation = true
+    options.encoding = 'utf8'
+}
+
+// JAR manifest configuration
+jar.manifest.mainAttributes(
+        "Built-By": System.properties['user.name'],
+        "Created-By": System.properties['java.vm.version'] + " (" + System.properties['java.vm.vendor'] + ")",
+        "Implementation-Title": name,
+        "Implementation-Version": version + "+" + ciSystem + "-b" + buildNumber + ".git-" + commit,
+        "Implementation-Vendor": url
+)
+
+// Artifact deployment
+uploadArchives {
+    repositories.mavenDeployer {
+        // Javadoc JAR generation
+        task javadocJar(type: Jar, dependsOn: javadoc) {
+            classifier = 'javadoc'
+            from 'build/docs/javadoc'
+        }
+
+        // Source JAR generation
+        task sourcesJar(type: Jar) {
+            classifier = 'sources'
+            from sourceSets.main.java.srcDirs
+        }
+
+        // Set all artifacts
+        artifacts {
+            archives jar, javadocJar, sourcesJar
+        }
+
+        // Tasks and variables based on if release or snapshot
+        if (version.endsWith('-SNAPSHOT')) {
+            // Set variable to snapshots repository URL
+            ext.sonatypeUrl = 'https://oss.sonatype.org/content/repositories/snapshots'
+        } else {
+            // Set variable to releases repository URL
+            ext.sonatypeUrl = 'https://oss.sonatype.org/service/local/staging/deploy/maven2'
+
+            // Deployment signing
+            signing {
+                // Check if uploadArchives task is used
+                required { isReleaseVersion && gradle.taskGraph.hasTask("uploadArchives") }
+
+                // Sign JAR artifacts
+                sign configurations.archives
+
+                // Sign Maven POM
+                beforeDeployment {
+                    org.gradle.api.artifacts.maven.MavenDeployment deployment -> signing.signPom(deployment)
+                }
+            }
+        }
+
+        // Set login credentials for repository
+        repository(url: sonatypeUrl) {
+            authentication(userName: System.getenv("sonatypeUsername"), password: System.getenv("sonatypePassword"))
+        }
+
+        // Maven POM generation
+        pom.project {
+            name projectName
+            artifactId archivesBaseName
+            packaging packaging
+            inceptionYear inceptionYear
+            url url
+            description project.ext.description
+
+            scm {
+                connection 'scm:git:git://github.com/flow/flow-components.git'
+                developerConnection 'scm:git:ssh://git@github.com:flow/flow-components.git'
+                url 'https://github.com/flow/flow-components'
+            }
+
+            licenses {
+                license {
+                    name 'The MIT License'
+                    url 'http://www.tldrlegal.com/license/mit-license'
+                    distribution 'repo'
+                }
+            }
+
+            developers {
+                developer {
+                    id 'Zidane'
+                    name 'Chris Sanders'
+                    email 'zidane@outlook.com'
+                }
+            }
+
+            organization {
+                name organization
+                url url
+            }
+
+            issueManagement {
+                system 'github'
+                url 'https://github.com/flow/flow-components/issues'
+            }
+        }
+    }
+}
